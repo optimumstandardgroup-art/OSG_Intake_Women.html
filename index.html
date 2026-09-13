@@ -1058,62 +1058,247 @@ document.getElementById('consentCheck').addEventListener('change', function() {
   document.getElementById('submitBtn').disabled = !this.checked;
 });
 
-// Collect all form data
-function collectFormData() {
-  const form = document.getElementById('intakeForm');
-  const fd = new FormData(form);
-  const data = {};
+// ===== SECTION-ORGANIZED DATA COLLECTION =====
 
-  // Text/select/textarea fields
-  for (const [key, val] of fd.entries()) {
-    if (data[key]) {
-      if (Array.isArray(data[key])) data[key].push(val);
-      else data[key] = [data[key], val];
-    } else {
-      data[key] = val;
-    }
-  }
-
-  // Checkboxes
-  form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-    const k = cb.name;
-    if (!data[k]) data[k] = [];
-    if (!Array.isArray(data[k])) data[k] = [data[k]];
-    if (!data[k].includes(cb.value)) data[k].push(cb.value);
-  });
-
-  // Convert arrays to strings
-  for (const k in data) {
-    if (Array.isArray(data[k])) data[k] = data[k].join(', ');
-  }
-
-  return data;
+function getVal(name) {
+  const el = document.querySelector(`[name="${name}"]`);
+  return el ? el.value.trim() : '';
 }
 
-// Submit
+function getRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+
+function getChecked(name) {
+  const els = document.querySelectorAll(`input[name="${name}"]:checked`);
+  return Array.from(els).map(e => e.value).join(', ');
+}
+
+function getTableRows(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return '';
+  const rows = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const cells = tr.querySelectorAll('input, select');
+    const label = tr.querySelector('td strong, td');
+    const labelText = label ? label.textContent.trim() : '';
+    const inputVals = Array.from(cells).map(c => c.value.trim());
+    if (inputVals.some(v => v !== '' && v !== '0')) {
+      rows.push(`  ${labelText}: ${inputVals.filter(v => v).join(' | ')}`);
+    }
+  });
+  return rows.join('\n');
+}
+
+function getMedTable(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return '';
+  const rows = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    const vals = Array.from(inputs).map(i => i.value.trim());
+    if (vals[0]) {
+      rows.push(`  ${vals.join(' | ')}`);
+    }
+  });
+  return rows.join('\n');
+}
+
+function getMenoSymptoms() {
+  const tbody = document.getElementById('menoSymptoms');
+  if (!tbody) return '';
+  const rows = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const cells = tr.querySelectorAll('td');
+    const symptom = cells[0] ? cells[0].textContent.trim() : '';
+    const severity = tr.querySelector('select');
+    const notes = tr.querySelector('input');
+    const sevVal = severity ? severity.value : '0';
+    const noteVal = notes ? notes.value.trim() : '';
+    if (sevVal !== '0' || noteVal) {
+      rows.push(`  ${symptom}: Severity ${sevVal}${noteVal ? ' — ' + noteVal : ''}`);
+    }
+  });
+  return rows.join('\n');
+}
+
+function buildSummary() {
+  let s = '';
+
+  // SECTION 1
+  s += '══════════════════════════════════════\n';
+  s += 'SECTION 1: PERSONAL INFORMATION\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `Full Name: ${getVal('full_name')}\n`;
+  s += `Preferred Name: ${getVal('preferred_name')}\n`;
+  s += `Date of Birth: ${getVal('dob')}\n`;
+  s += `Age: ${getVal('age')}\n`;
+  s += `Email: ${getVal('email')}\n`;
+  s += `Phone: ${getVal('phone')}\n`;
+  s += `Race / Ethnicity: ${getVal('race_ethnicity')}\n`;
+  s += `Height: ${getVal('height')}\n`;
+  s += `Weight: ${getVal('weight')}\n`;
+  s += `Waist: ${getVal('waist')}\n`;
+  s += `Hip: ${getVal('hip')}\n`;
+  s += `Waist-to-Hip Ratio: ${getVal('whr')}\n`;
+  s += `BMI: ${getVal('bmi')}\n`;
+  s += `Body Fat %: ${getVal('body_fat')}\n`;
+  s += `PCP: ${getVal('pcp_name')} | Phone: ${getVal('pcp_phone')}\n`;
+  s += `Prescribing Physician(s): ${getVal('prescribing_md')}\n`;
+  s += `Pharmacy: ${getVal('pharmacy')}\n`;
+  s += `Insurance: ${getVal('insurance')}\n`;
+  s += `Emergency Contact: ${getVal('emergency_contact')}\n`;
+
+  // SECTION 2
+  s += '\n══════════════════════════════════════\n';
+  s += 'SECTION 2: REPRODUCTIVE & HORMONAL\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `Menstrual Status: ${getRadio('menstrual_status')}\n`;
+  s += `Age of Menarche: ${getVal('menarche_age')}\n`;
+  s += `Age of Last Period: ${getVal('last_period_age')}\n`;
+  s += `Cycle Length: ${getVal('cycle_length')} days\n`;
+  s += `Period Duration: ${getVal('period_duration')} days\n`;
+  s += `Menstrual Symptoms: ${getChecked('menstrual_symptoms')}\n`;
+  s += `Pregnancies: ${getVal('pregnancies')}\n`;
+  s += `Live Births: ${getVal('live_births')}\n`;
+  s += `Miscarriages: ${getVal('miscarriages')}\n`;
+  s += `Fertility Treatments: ${getVal('fertility_treatments')}\n`;
+  s += `Pregnancy Complications: ${getChecked('preg_comp')}\n`;
+  s += `Pregnant / TTC: ${getRadio('pregnant_ttc')}\n`;
+  s += `Hormonal Use: ${getChecked('hormonal_use')}\n`;
+  s += `HRT Details: ${getVal('hrt_details')}\n`;
+  const menoData = getMenoSymptoms();
+  if (menoData) {
+    s += `\n--- Menopausal Symptoms ---\n${menoData}\n`;
+  }
+
+  // SECTION 3
+  s += '\n══════════════════════════════════════\n';
+  s += 'SECTION 3: MEDICAL HISTORY\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `Current Diagnoses: ${getChecked('diagnoses')}\n`;
+  s += `Other Diagnoses: ${getVal('other_diagnoses')}\n`;
+  s += `Surgical History: ${getChecked('surgeries')}\n`;
+  s += `Other Surgeries: ${getVal('other_surgeries')}\n`;
+  s += `Family — Heart Disease: ${getVal('fam_heart')}\n`;
+  s += `Family — Breast Cancer: ${getVal('fam_breast_cancer')}\n`;
+  s += `Family — GYN Cancer: ${getVal('fam_gyn_cancer')}\n`;
+  s += `Family — Diabetes: ${getVal('fam_diabetes')}\n`;
+  s += `Family — Thyroid: ${getVal('fam_thyroid')}\n`;
+  s += `Family — Autoimmune: ${getVal('fam_autoimmune')}\n`;
+  s += `Family — Osteoporosis: ${getVal('fam_osteo')}\n`;
+  s += `Family — Dementia: ${getVal('fam_dementia')}\n`;
+  s += `Family — Early Menopause: ${getVal('fam_early_meno')}\n`;
+  s += `Family — Sickle Cell: ${getVal('fam_sickle_cell')}\n`;
+
+  // SECTION 4
+  s += '\n══════════════════════════════════════\n';
+  s += 'SECTION 4: MEDICATIONS & PEPTIDES\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `--- Prescription Medications ---\n`;
+  const meds = getMedTable('medRows');
+  s += meds ? meds + '\n' : '  None listed\n';
+  s += `\n--- Supplements ---\n`;
+  const supps = getMedTable('suppRows');
+  s += supps ? supps + '\n' : '  None listed\n';
+  s += `\nPeptide History: ${getRadio('peptide_history')}\n`;
+  s += `Peptides Used: ${getChecked('peptides_used')}\n`;
+  s += `Peptide Source: ${getVal('peptide_source')}\n`;
+  s += `Peptide Physician: ${getVal('peptide_physician')}\n`;
+  s += `Side Effects: ${getVal('peptide_side_effects')}\n`;
+
+  // SECTION 5
+  s += '\n══════════════════════════════════════\n';
+  s += 'SECTION 5: BIOMARKER PANEL\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `Lab Provider: ${getVal('lab_provider')}\n`;
+  s += `Date of Draw: ${getVal('lab_date')}\n`;
+  s += `Fasting: ${getVal('fasting')}\n`;
+  s += `Cycle Day at Draw: ${getVal('cycle_day_at_draw')}\n`;
+
+  s += `\n--- Metabolic Panel ---\n`;
+  s += getTableRows('metabolicPanel') || '  No values entered';
+  s += `\n\n--- Hormonal Panel (Female) ---\n`;
+  s += getTableRows('hormonalPanel') || '  No values entered';
+  s += `\n\n--- Thyroid Panel ---\n`;
+  s += getTableRows('thyroidPanel') || '  No values entered';
+  s += `\n\n--- Inflammatory & Nutrient Markers ---\n`;
+  s += getTableRows('inflammPanel') || '  No values entered';
+
+  // SECTION 6
+  s += `\n\n--- Growth Hormone & Longevity ---\n`;
+  s += getTableRows('longevityPanel') || '  No values entered';
+  s += `\n\n--- Complete Blood Count ---\n`;
+  s += getTableRows('cbcPanel') || '  No values entered';
+  s += `\n\n--- Bone Health ---\n`;
+  s += getTableRows('bonePanel') || '  No values entered';
+  s += `\n\n--- Gut Health ---\n`;
+  s += getTableRows('gutPanel') || '  No values entered';
+
+  // SECTION 7
+  s += '\n\n══════════════════════════════════════\n';
+  s += 'SECTION 7: LIFESTYLE & NUTRITION\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `Diet: ${getChecked('diet')}\n`;
+  s += `Daily Protein (g): ${getVal('daily_protein')}\n`;
+  s += `Meals Per Day: ${getVal('meals_per_day')}\n`;
+  s += `Eating Window: ${getVal('eating_window')}\n`;
+  s += `Water Intake (oz): ${getVal('water_intake')}\n`;
+  s += `Caffeine: ${getVal('caffeine')}\n`;
+  s += `Alcohol: ${getVal('alcohol')}\n`;
+  s += `Food Allergies: ${getVal('food_allergies')}\n`;
+  s += `Fasting Practice: ${getRadio('fasting_practice')}\n`;
+  s += `Fasting Protocol: ${getVal('fasting_protocol')}\n`;
+  s += `Longest Fast (hrs): ${getVal('longest_fast')}\n`;
+  s += `Cycle-Synced Fasting: ${getRadio('cycle_sync_fasting')}\n`;
+  s += `Exercise Types: ${getChecked('exercise')}\n`;
+  s += `Exercise Frequency: ${getVal('exercise_freq')}\n`;
+  s += `Exercise Duration: ${getVal('exercise_duration')}\n`;
+  s += `Sleep Hours: ${getVal('sleep_hours')}\n`;
+  s += `Sleep Quality: ${getVal('sleep_quality')}\n`;
+  s += `Sleep Issues: ${getChecked('sleep_issues')}\n`;
+  s += `Stress Level (1-10): ${getVal('stress_level')}\n`;
+  s += `Stressors: ${getChecked('stressors')}\n`;
+
+  // SECTION 8
+  s += '\n══════════════════════════════════════\n';
+  s += 'SECTION 8: GOALS & PRIORITIES\n';
+  s += '══════════════════════════════════════\n\n';
+  s += `Goal #1: ${getVal('goal_1')}\n`;
+  s += `Goal #2: ${getVal('goal_2')}\n`;
+  s += `Goal #3: ${getVal('goal_3')}\n`;
+  s += `Areas of Interest: ${getChecked('interests')}\n`;
+  s += `Optimal Health Vision: ${getVal('optimal_health')}\n`;
+  s += `What Has NOT Worked: ${getVal('not_worked')}\n`;
+  s += `Cultural Context: ${getVal('cultural_context')}\n`;
+
+  return s;
+}
+
+// ===== SUBMIT HANDLER =====
 document.getElementById('intakeForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const overlay = document.getElementById('loadingOverlay');
   overlay.classList.add('active');
 
   try {
-    const data = collectFormData();
+    const summary = buildSummary();
+    const clientName = getVal('full_name') || 'Not provided';
+    const clientEmail = getVal('email') || 'Not provided';
 
-    // Build a readable summary for email
-    let summary = '=== OSG WOMEN\'S INTAKE FORM ===\n\n';
-    for (const [k, v] of Object.entries(data)) {
-      if (v && v.trim && v.trim() !== '' && k !== 'consentCheck') {
-        const label = k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        summary += `${label}: ${v}\n`;
-      }
-    }
+    const midpoint = Math.floor(summary.length / 2);
+    const splitAt = summary.indexOf('\n', midpoint);
+    const part1 = summary.substring(0, splitAt);
+    const part2 = summary.substring(splitAt);
 
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       form_type: "Women's Comprehensive Biomarker & Health Intake",
-      client_name: data.full_name || 'Not provided',
-      client_email: data.email || 'Not provided',
+      client_name: clientName,
+      client_email: clientEmail,
       submission_date: new Date().toLocaleDateString(),
-      form_data: summary
+      form_data: part1,
+      form_data_2: part2
     });
 
     overlay.classList.remove('active');
